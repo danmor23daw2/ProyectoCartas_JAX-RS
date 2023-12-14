@@ -24,11 +24,7 @@ public class JocWebService {
     public byte iniciarJoc(@PathParam("codiPartida") int codiPartida) {
         if (codiPartida > partidas.size()) {
             ArrayList<String> mazo = new ArrayList<>();
-            // Lógica para inicializar el mazo con cartas de UNO
-            // ...
 
-            // Lógica para repartir cartas a los jugadores
-            // ...
             partidas.add(String.valueOf(mazo));
         }
         return (byte) partidas.size();
