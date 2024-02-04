@@ -6,20 +6,12 @@ import jakarta.ws.rs.core.MediaType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-/**
- * WebService que representa un joc de cartes de UNO.
- * @version 1.4
- * Autor: Daniel Moreno/ Jose Daniel Sanchez
- * @date 9.11.23
- */
+
 @Path("/")
 public class JocWebService {
+
     private static List<Partida> partides = new ArrayList<>();
-    /**
-     * Inicia un joc de UNO amb un codi de partida.
-     * @param codiPartida Codi de la partida a iniciar
-     * @return Missatge indicant l'èxit o l'existència prèvia de la partida
-     */
+
     @POST
     @Path("/iniciarJoc/{codiPartida}")
     @Produces(MediaType.TEXT_PLAIN)
@@ -27,48 +19,12 @@ public class JocWebService {
         if (!esPartidaValida(codiPartida)) {
             Partida novaPartida = new Partida(codiPartida);
             partides.add(novaPartida);
-            return "Joc iniciat amb èxit. Codi de partida: " + codiPartida;
-        }
-        return "El codi de partida " + codiPartida + " ja existeix. Si us plau, tria'n un altre.";
-    }
-
-    private static List<String> crearBaralla() {
-        List<String> colors = List.of("Vermell", "Verd", "Blau", "Groc");
-        List<String> valors = List.of("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "Salta", "Inverteix", "AgafaDos");
-
-        List<String> baralla = new ArrayList<>();
-
-        for (String color : colors) {
-            for (String valor : valors) {
-                baralla.add(color + " " + valor);
-            }
-        }
-
-        return baralla;
-    }
-
-    private void repartirCartes(List<String> baralla, int cartesPerJugador) {
-        Collections.shuffle(baralla);
-
-        int numJugadors = 2;
-        int cartesTotals = cartesPerJugador * numJugadors;
-
-        if (baralla.size() >= cartesTotals) {
-            for (int i = 0; i < numJugadors; i++) {
-                List<String> maJugador = new ArrayList<>(baralla.subList(i * cartesPerJugador, (i + 1) * cartesPerJugador));
-                partides.get(partides.size() - 1).afegirMaJugador(maJugador);
-            }
-            baralla.clear();
+            return "Joc iniciat amb èxit. Codi de partida: " + codiPartida + ". Carta inicial: " + novaPartida.getCartaInicial();
         } else {
-            System.out.println("No hay suficientes cartas para repartir a los jugadores.");
+            return "El codi de partida " + codiPartida + " ja existeix. Si us plau, tria'n un altre.";
         }
     }
-    /**
-     * Mostra les cartes d'un jugador en format JSON.
-     * @param codiPartida Codi de la partida
-     * @param numJugador Número de jugador
-     * @return Llista de cartes en format JSON
-     */
+
     @GET
     @Path("/mostrarCartes/{codiPartida}/{numJugador}")
     @Produces(MediaType.APPLICATION_JSON)
@@ -80,70 +36,63 @@ public class JocWebService {
             return new ArrayList<>();
         }
     }
-    /**
-     * Tira una carta en el joc.
-     * @param codiPartida Codi de la partida
-     * @param carta Carta a ser tirada
-     * @param numJugador Número de jugador
-     * @return Resposta del joc després de tirar la carta
-     */
+
     @PUT
     @Path("/tirarCarta/{codiPartida}/{carta}/{numJugador}")
     @Produces(MediaType.TEXT_PLAIN)
     public String tirarCarta(@PathParam("codiPartida") int codiPartida,
                              @PathParam("carta") String carta,
-                             @PathParam("numJugador") int numJugador) {
+                             @PathParam("numJugador") int numJugador,
+                             @QueryParam("nuevoColor") String nuevoColor) {
         if (esPartidaValida(codiPartida)) {
-            return partides.get(codiPartida - 1).tirarCarta(numJugador, carta);
+            Partida partida = partides.get(codiPartida - 1);
+            System.out.println("Partida actual: " + partida);
+
+            if (carta.contains("CanviColor") || carta.contains("AgafaQuatre")) {
+                if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
+                    return "Error: Debes proporcionar un nuevo color válido para la carta CanviColor (Vermell, Verd, Blau o Groc).";
+                }
+                if (carta.contains("CanviColor")) {
+                    partida.establecerCartaInicial(nuevoColor + " CanviColor");
+                }
+            }
+
+            String resultadoTirada = partida.tirarCarta(numJugador, carta, nuevoColor);
+
+            if (resultadoTirada.startsWith("Error")) {
+                String cartaEnMesa = partida.getUltimaCarta();
+                return resultadoTirada + ". Carta en la mesa: " + cartaEnMesa;
+            }else {
+                return resultadoTirada;
+            }
         } else {
             return "Codi de partida no vàlid.";
         }
     }
-    /**
-     * Mou un jugador en el joc passant el seu torn.
-     * @param codiPartida Codi de la partida
-     * @return Resposta del joc després de passar el torn
-     */
+
+
     @PUT
-    @Path("/moureJugador/{codiPartida}/passa")
+    @Path("/moureJugador/{codiPartida}/passa/{numJugador}")
     @Produces(MediaType.TEXT_PLAIN)
-    public String moureJugadorPassa(@PathParam("codiPartida") int codiPartida) {
+    public String moureJugadorPassa(@PathParam("codiPartida") int codiPartida,
+                                    @PathParam("numJugador") int numJugador) {
         if (esPartidaValida(codiPartida)) {
-            return "El jugador ha passat el seu torn.";
+            return partides.get(codiPartida - 1).passarTorn(numJugador);
         } else {
             return "Codi de partida no vàlid.";
         }
     }
-    /**
-     * Mou un jugador en el joc fent una aposta.
-     * @param codiPartida Codi de la partida
-     * @param quantitat Quantitat apostada
-     * @return Resposta del joc després de realitzar el moviment
-     */
-    @PUT
-    @Path("/moureJugador/{codiPartida}/robar/{quantitat}")
-    @Produces(MediaType.TEXT_PLAIN)
-    public String moureJugador(@PathParam("codiPartida") int codiPartida,
-                               @PathParam("quantitat") int quantitat) {
-        if (esPartidaValida(codiPartida)) {
-            return "El jugador ha robat " + quantitat + " cartes.";
-        } else {
-            return "Codi de partida no vàlid.";
-        }
-    }
-    /**
-     * Finalitza un joc de UNO i elimina la partida.
-     * @param codiPartida Codi de la partida a finalitzar
-     */
+
+
     @DELETE
     @Path("/acabarJoc/{codiPartida}")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public void acabarJoc(@PathParam("codiPartida") int codiPartida) {
+    public String acabarJoc(@PathParam("codiPartida") int codiPartida) {
         if (esPartidaValida(codiPartida)) {
             partides.remove(codiPartida - 1);
-            System.out.println("Joc finalitzat " + codiPartida);
+            return "Joc finalitzat " + codiPartida;
         } else {
-            System.out.println("Codi de partida no vàlid.");
+            return "Codi de partida no vàlid.";
         }
     }
 
@@ -154,11 +103,36 @@ public class JocWebService {
     private static class Partida {
         private int codiPartida;
         private List<List<String>> mans;
+        private String cartaInicial;
+        private String ultimaCarta;
+        private int turnoActual;
+        private int jugadoresQueHanPasado;
+        private void establecerCartaInicial() {
+            List<String> colores = List.of("Vermell", "Verd", "Blau", "Groc");
+            List<String> numeros = List.of("0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
+
+            List<String> cartasNumerosColores = new ArrayList<>();
+
+            for (String color : colores) {
+                for (String numero : numeros) {
+                    cartasNumerosColores.add(color + " " + numero);
+                }
+            }
+
+            Collections.shuffle(cartasNumerosColores);
+            this.cartaInicial = cartasNumerosColores.get(0);
+        }
+
+        public String getUltimaCarta() {
+            return ultimaCarta != null ? ultimaCarta : "No hay carta en la mesa.";
+        }
 
         public Partida(int codiPartida) {
             this.codiPartida = codiPartida;
             this.mans = new ArrayList<>();
             repartirCartes(7);
+            this.establecerCartaInicial();
+            this.turnoActual = 1;
         }
 
         public void repartirCartes(int cartesPerJugador) {
@@ -175,7 +149,7 @@ public class JocWebService {
                 }
                 baralla.clear();
             } else {
-                System.out.println("No hay suficientes cartas para repartir a los jugadores.");
+                System.out.println("No hi ha prou cartes per repartir als jugadors.");
             }
         }
 
@@ -187,23 +161,190 @@ public class JocWebService {
             }
         }
 
-        public String tirarCarta(int numJugador, String carta) {
-            if (numJugador > 0 && numJugador <= mans.size()) {
-                List<String> maJugador = mans.get(numJugador - 1);
+        public String passarTorn(int numJugador) {
+            if (numJugador == turnoActual) {
+                turnoActual = turnoActual % 2 + 1;
+                jugadoresQueHanPasado = 0;
 
-                if (maJugador.contains(carta)) {
-                    maJugador.remove(carta);
-                    return "El jugador " + numJugador + " ha tirat una carta: " + carta;
-                } else {
-                    return "La carta no està a la mà del jugador " + numJugador;
-                }
+                List<String> baralla = crearBaralla();
+                Collections.shuffle(baralla);
+
+                String cartaRobada = baralla.remove(0);
+                mans.get(numJugador - 1).add(cartaRobada);
+
+                return String.format("El torn s'ha passat al jugador %d. El jugador %d ha robat 1 carta.", turnoActual, numJugador);
             } else {
-                return "Número de jugador no vàlid.";
+                return "No és el teu torn per passar.";
             }
         }
 
-        public void afegirMaJugador(List<String> maJugador) {
-            mans.add(maJugador);
+
+        public String getCartaInicial() {
+            return cartaInicial != null ? cartaInicial : "No s'ha establert cap carta inicial.";
+        }
+
+        public String tirarCarta(int numJugador, String carta, String nuevoColor) {
+            if (numJugador == 1 || numJugador == 2) {
+                List<String> maJugador = mans.get(numJugador - 1);
+
+                if (numJugador == turnoActual) {
+                    if (ultimaCarta == null) {
+                        if (maJugador.contains(carta) && (carta.contains("CanviColor") || carta.contains("AgafaQuatre") || esMismaCartaInicial(carta))) {
+                            maJugador.remove(carta);
+
+                            if (carta.contains("CanviColor")) {
+                                String[] partesCarta = carta.split(" ");
+                                nuevoColor = partesCarta[0];
+
+                                cartaInicial = nuevoColor + " CanviColor";
+                                ultimaCarta = nuevoColor + " CanviColor";
+
+                                turnoActual = turnoActual % 2 + 1;
+
+                                return "El jugador " + numJugador + " ha tirat " + ultimaCarta + " i ha triat el color " + nuevoColor + ".";
+                            } else if (carta.contains("AgafaQuatre")) {
+                                int jugadorOponente = turnoActual % 2 + 1;
+
+                                for (int i = 0; i < 4; i++) {
+                                    mans.get(jugadorOponente - 1).add(generarCartaRandom());
+                                }
+
+                                ultimaCarta = carta + " (Rival ha robat 4 cartes)";
+                                turnoActual = turnoActual % 2 + 1;
+
+                                return "El jugador " + numJugador + " ha tirat " + ultimaCarta + ". El jugador " + jugadorOponente + " ha robat 4 cartes.";
+                            }
+
+                            if (carta.contains("AgafaDos")) {
+                                int jugadorSiguiente = turnoActual % 2 + 1;
+
+                                for (int i = 0; i < 2; i++) {
+                                    mans.get(jugadorSiguiente - 1).add(generarCartaRandom());
+                                }
+
+                                jugadoresQueHanPasado = 2;
+                                turnoActual = numJugador;
+
+                                return "El jugador " + numJugador + " ha tirat " + carta + ". El jugador " + jugadorSiguiente + " ha robat 2 cartes. No pot tirar al següent torn.";
+                            } else if (carta.contains("Salta")) {
+                                turnoActual = numJugador;
+                                ultimaCarta = carta;
+                                return "El jugador " + numJugador + " ha tirat " + carta + ". Ha saltat el torn del jugador " + (numJugador % 2 + 1) + ".";
+                            } else if (carta.contains("Inverteix")) {
+                                turnoActual = numJugador;
+                                ultimaCarta = carta;
+                                return "El jugador " + numJugador + " ha tirat " + carta + ". S'ha invertit el torn. Ara li toca al jugador " + numJugador + ".";
+                            } else {
+                                turnoActual = turnoActual % 2 + 1;
+                            }
+
+                            ultimaCarta = carta;
+
+                            return "El jugador " + numJugador + " ha tirat una carta: " + carta;
+                        } else {
+                            return "La carta no està a la mà del jugador " + numJugador + " o no es pot tirar. Carta a la taula: " + cartaInicial + ".";
+                        }
+                    } else {
+                        if (puedeTirarCarta(carta)) {
+                            int cartaIndex = maJugador.indexOf(carta);
+                            if (cartaIndex != -1) {
+                                maJugador.remove(cartaIndex);
+
+                                if (carta.contains("AgafaDos") || carta.contains("Salta") || carta.contains("Inverteix")) {
+                                } else {
+                                    ultimaCarta = carta;
+                                }
+
+                                if (carta.contains("AgafaDos")) {
+                                    int jugadorSiguiente = turnoActual % 2 + 1;
+
+                                    for (int i = 0; i < 2; i++) {
+                                        mans.get(jugadorSiguiente - 1).add(generarCartaRandom());
+                                    }
+
+                                    jugadoresQueHanPasado = 2;
+                                    turnoActual = numJugador;
+
+                                    return "El jugador " + numJugador + " ha tirat " + carta + ". El jugador " + jugadorSiguiente + " ha robat 2 cartes. No pot tirar al següent torn.";
+                                } else if (carta.contains("Salta")) {
+                                    turnoActual = numJugador;
+                                    ultimaCarta = carta;
+                                    return "El jugador " + numJugador + " ha tirat " + carta + ". Ha saltat/bloquejat el torn del jugador " + (numJugador % 2 + 1) + ".";
+                                } else if (carta.contains("Inverteix")) {
+                                    turnoActual = numJugador;
+                                    ultimaCarta = carta;
+                                    return "El jugador " + numJugador + " ha tirat " + carta + ". S'ha invertit el torn. Ara li toca al jugador " + numJugador + ".";
+                                } else {
+                                    turnoActual = turnoActual % 2 + 1;
+                                }
+
+                                ultimaCarta = carta;
+
+                                return "El jugador " + numJugador + " ha tirat una carta: " + carta;
+                            } else {
+                                return "La carta no està a la mà del jugador " + numJugador;
+                            }
+                        } else {
+                            return "Error: Has de tirar una carta que tingui el mateix color, el mateix número o una carta especial ('Salta', 'Inverteix', 'AgafaDos').";
+                        }
+                    }
+                } else {
+                    return "No és el teu torn per tirar.";
+                }
+            } else {
+                return "Número de jugador no válido.";
+            }
+        }
+
+
+        private boolean esMismaCartaInicial(String carta) {
+            String[] inicial = cartaInicial.split(" ");
+            String[] actual = carta.split(" ");
+
+            return actual[0].equals(inicial[0]) || actual[1].equals(inicial[1]);
+        }
+
+        private boolean puedeTirarCarta(String carta) {
+            if (ultimaCarta == null) {
+                return true;
+            }
+
+            String[] ultima = ultimaCarta.split(" ");
+            String[] actual = carta.split(" ");
+
+            if ("Salta".equals(actual[1]) || "Inverteix".equals(actual[1]) || "AgafaDos".equals(actual[1])) {
+                return actual[0].equals(ultima[0]) || actual[1].equals(ultima[1]);
+            }
+
+            return actual[0].equals(ultima[0]) || actual[1].equals(ultima[1]);
+        }
+
+        private String generarCartaRandom() {
+            List<String> baralla = crearBaralla();
+            Collections.shuffle(baralla);
+            return baralla.remove(0);
+        }
+
+        private List<String> crearBaralla() {
+            List<String> colors = List.of("Vermell", "Verd", "Blau", "Groc");
+            List<String> valors = List.of("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "Salta", "Inverteix", "AgafaDos", "CanviColor", "AgafaQuatre");
+
+            List<String> baralla = new ArrayList<>();
+
+            for (String valor : valors) {
+                if ("CanviColor".equals(valor) || "AgafaQuatre".equals(valor)) {
+                    baralla.add(valor);
+                } else {
+                    for (String color : colors) {
+                        baralla.add(color + " " + valor);
+                    }
+                }
+            }
+
+            return baralla;
+        }
+
+        public void establecerCartaInicial(String s) {
         }
     }
 }
