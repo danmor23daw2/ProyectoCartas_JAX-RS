@@ -48,27 +48,38 @@ public class JocWebService {
             Partida partida = partides.get(codiPartida - 1);
             System.out.println("Partida actual: " + partida);
 
-            if (carta.contains("CanviColor") || carta.contains("AgafaQuatre")) {
-                if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
-                    return "Error: Debes proporcionar un nuevo color válido para la carta CanviColor (Vermell, Verd, Blau o Groc).";
+            try {
+                if (carta.contains("CanviColor") || carta.contains("AgafaQuatre")) {
+                    if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
+                        return "Error: El nuevo color proporcionado para la carta CanviColor no es válido. Debe ser uno de: Vermell, Verd, Blau o Groc.";
+                    }
+                    if (carta.contains("CanviColor")) {
+                        partida.establecerCartaInicial(nuevoColor + " CanviColor");
+                    }
                 }
-                if (carta.contains("CanviColor")) {
-                    partida.establecerCartaInicial(nuevoColor + " CanviColor");
+
+                String resultadoTirada = partida.tirarCarta(numJugador, carta, nuevoColor);
+
+                if (resultadoTirada.startsWith("Error")) {
+                    String cartaEnMesa = partida.getUltimaCarta();
+                    System.out.println("Carta en la mesa: " + cartaEnMesa);
+                    return resultadoTirada + ". Carta en la mesa: " + cartaEnMesa;
+                } else {
+                    String mensaje = String.format("El jugador %d ha tirado %s", numJugador, resultadoTirada);
+                    System.out.println("Carta Inicial: " + partida.getCartaInicial());
+                    System.out.println("Última Carta: " + partida.getUltimaCarta());
+                    return mensaje;
                 }
-            }
-
-            String resultadoTirada = partida.tirarCarta(numJugador, carta, nuevoColor);
-
-            if (resultadoTirada.startsWith("Error")) {
-                String cartaEnMesa = partida.getUltimaCarta();
-                return resultadoTirada + ". Carta en la mesa: " + cartaEnMesa;
-            }else {
-                return resultadoTirada;
+            } catch (Exception e) {
+                e.printStackTrace();
+                return "Error: Se produjo una excepción durante la tirada de la carta.";
             }
         } else {
             return "Codi de partida no vàlid.";
         }
     }
+
+
 
 
     @PUT
@@ -193,12 +204,12 @@ public class JocWebService {
                             maJugador.remove(carta);
 
                             if (carta.contains("CanviColor")) {
-                                String[] partesCarta = carta.split(" ");
-                                nuevoColor = partesCarta[0];
+                                if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
+                                    return "Error: Debes proporcionar un nuevo color válido para la carta CanviColor (Vermell, Verd, Blau o Groc).";
+                                }
 
                                 cartaInicial = nuevoColor + " CanviColor";
                                 ultimaCarta = nuevoColor + " CanviColor";
-
                                 turnoActual = turnoActual % 2 + 1;
 
                                 return "El jugador " + numJugador + " ha tirat " + ultimaCarta + " i ha triat el color " + nuevoColor + ".";
@@ -209,12 +220,11 @@ public class JocWebService {
                                     mans.get(jugadorOponente - 1).add(generarCartaRandom());
                                 }
 
-                                ultimaCarta = carta + " (Rival ha robat 4 cartes)";
+                                ultimaCarta = nuevoColor + " AgafaQuatre";
                                 turnoActual = turnoActual % 2 + 1;
 
-                                return "El jugador " + numJugador + " ha tirat " + ultimaCarta + ". El jugador " + jugadorOponente + " ha robat 4 cartes.";
+                                return "El jugador " + numJugador + " ha tirat " + ultimaCarta + ". El jugador " + jugadorOponente + " ha robado 4 cartas.";
                             }
-
                             if (carta.contains("AgafaDos")) {
                                 int jugadorSiguiente = turnoActual % 2 + 1;
 
