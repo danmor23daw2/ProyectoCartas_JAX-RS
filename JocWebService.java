@@ -50,7 +50,6 @@ public class JocWebService {
 
             try {
                 if (carta.contains("CanviColor") || carta.contains("AgafaQuatre")) {
-                    // Verificar si el jugador tiene la carta en su mano
                     if (!partida.mans.get(numJugador - 1).contains(carta)) {
                         return "Error: El jugador " + numJugador + " no tiene la carta " + carta + " en su mano.";
                     }
@@ -61,11 +60,14 @@ public class JocWebService {
 
                     if (carta.contains("CanviColor")) {
                         partida.establecerCartaInicial(nuevoColor + " CanviColor");
-                        // Eliminar la carta de la mano del jugador después de usarla
                         partida.mans.get(numJugador - 1).remove(carta);
+
+                        partida.setUltimaCarta(nuevoColor + " CanviColor");
+
+                        partida.cambiarTurno();
+
                         return "El jugador " + numJugador + " ha tirado " + nuevoColor + " " + carta + " y ha cambiado el color a " + nuevoColor + ".";
                     } else if (carta.contains("AgafaQuatre")) {
-                        // Verificar si el jugador tiene la carta en su mano
                         if (!partida.mans.get(numJugador - 1).contains(carta)) {
                             return "Error: El jugador " + numJugador + " no tiene la carta " + carta + " en su mano.";
                         }
@@ -77,7 +79,6 @@ public class JocWebService {
                             manoOponente.add(partida.generarCartaRandom());
                         }
 
-                        // Eliminar la carta de la mano del jugador después de usarla
                         partida.mans.get(numJugador - 1).remove(carta);
 
                         partida.setUltimaCarta(nuevoColor + " AgafaQuatre");
@@ -232,33 +233,31 @@ public class JocWebService {
                         maJugador.remove(cartaIndex);
 
                         if (carta.contains("CanviColor")) {
-                            if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
-                                return "Error: Debes proporcionar un nuevo color válido para la carta CanviColor (Vermell, Verd, Blau o Groc).";
-                            }
+                            int jugadorOponente = partida.getTurnoActual() % 2 + 1;
 
-                            cartaInicial = nuevoColor + " CanviColor";
-                            ultimaCarta = nuevoColor + " CanviColor";
-                            turnoActual = turnoActual % 2 + 1;
 
-                            return "El jugador " + numJugador + " ha tirat " + ultimaCarta + " i ha triat el color " + nuevoColor + ".";
+                                String nuevaCarta = partida.generarCartaRandom();
+                                partida.mans.get(jugadorOponente - 1).add(nuevaCarta);
+
+                            maJugador.remove(carta);
+
+                            partida.setUltimaCarta(nuevoColor + " CanviColor");
+                            partida.cambiarTurno();
+                            return "El jugador " + numJugador + " ha tirado " + partida.getUltimaCarta() + ".";
                         } else if (carta.contains("AgafaQuatre")) {
                             int jugadorOponente = partida.getTurnoActual() % 2 + 1;
 
                             for (int i = 0; i < 4; i++) {
-                                // Agregar una nueva carta a la mano del oponente
                                 String nuevaCarta = partida.generarCartaRandom();
                                 partida.mans.get(jugadorOponente - 1).add(nuevaCarta);
                             }
 
-                            // Quitar la carta usada para AgafaQuatre de la mano del jugador
                             maJugador.remove(carta);
 
                             partida.setUltimaCarta(nuevoColor + " AgafaQuatre");
                             partida.cambiarTurno();
                             return "El jugador " + numJugador + " ha tirado " + partida.getUltimaCarta() + ". El jugador " + jugadorOponente + " ha robado 4 cartas.";
                         }
-
-
 
                         if (carta.contains("AgafaDos")) {
                             int jugadorSiguiente = this.turnoActual % 2 + 1;
@@ -351,7 +350,6 @@ public class JocWebService {
                     return actual[0].equals(ultima[0]) || actual[1].equals(ultima[1]);
                 }
 
-                // Permitir tirar "AgafaQuatre" y "CanviColor" en cualquier momento
                 if ("AgafaQuatre".equals(actual[1]) || "CanviColor".equals(actual[1])) {
                     return true;
                 }
