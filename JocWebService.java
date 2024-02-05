@@ -50,22 +50,50 @@ public class JocWebService {
 
             try {
                 if (carta.contains("CanviColor") || carta.contains("AgafaQuatre")) {
-                    if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
-                        return "Error: El nuevo color proporcionado para la carta CanviColor no es válido. Debe ser uno de: Vermell, Verd, Blau o Groc.";
+                    // Verificar si el jugador tiene la carta en su mano
+                    if (!partida.mans.get(numJugador - 1).contains(carta)) {
+                        return "Error: El jugador " + numJugador + " no tiene la carta " + carta + " en su mano.";
                     }
+
+                    if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
+                        return "Error: Debes proporcionar un nuevo color válido para la carta CanviColor (Vermell, Verd, Blau o Groc).";
+                    }
+
                     if (carta.contains("CanviColor")) {
                         partida.establecerCartaInicial(nuevoColor + " CanviColor");
+                        // Eliminar la carta de la mano del jugador después de usarla
+                        partida.mans.get(numJugador - 1).remove(carta);
+                        return "El jugador " + numJugador + " ha tirado " + nuevoColor + " " + carta + " y ha cambiado el color a " + nuevoColor + ".";
+                    } else if (carta.contains("AgafaQuatre")) {
+                        // Verificar si el jugador tiene la carta en su mano
+                        if (!partida.mans.get(numJugador - 1).contains(carta)) {
+                            return "Error: El jugador " + numJugador + " no tiene la carta " + carta + " en su mano.";
+                        }
+
+                        int jugadorOponente = partida.getTurnoActual() % 2 + 1;
+
+                        for (int i = 0; i < 4; i++) {
+                            List<String> manoOponente = partida.mans.get(jugadorOponente - 1);
+                            manoOponente.add(partida.generarCartaRandom());
+                        }
+
+                        // Eliminar la carta de la mano del jugador después de usarla
+                        partida.mans.get(numJugador - 1).remove(carta);
+
+                        partida.setUltimaCarta(nuevoColor + " AgafaQuatre");
+                        partida.cambiarTurno();
+                        return "El jugador " + numJugador + " ha tirado " + partida.getUltimaCarta() + ". El jugador " + jugadorOponente + " ha robado 4 cartas.";
                     }
                 }
 
-                String resultadoTirada = partida.tirarCarta(numJugador, carta, nuevoColor);
+                String resultadoTirada = partida.tirarCarta(numJugador, carta, nuevoColor, partida);
 
                 if (resultadoTirada.startsWith("Error")) {
                     String cartaEnMesa = partida.getUltimaCarta();
                     System.out.println("Carta en la mesa: " + cartaEnMesa);
                     return resultadoTirada + ". Carta en la mesa: " + cartaEnMesa;
                 } else {
-                    String mensaje = String.format("El jugador %d ha tirado %s", numJugador, resultadoTirada);
+                    String mensaje = String.format("%s", resultadoTirada);
                     System.out.println("Carta Inicial: " + partida.getCartaInicial());
                     System.out.println("Última Carta: " + partida.getUltimaCarta());
                     return mensaje;
@@ -194,140 +222,155 @@ public class JocWebService {
             return cartaInicial != null ? cartaInicial : "No s'ha establert cap carta inicial.";
         }
 
-        public String tirarCarta(int numJugador, String carta, String nuevoColor) {
-            if (numJugador == 1 || numJugador == 2) {
-                List<String> maJugador = mans.get(numJugador - 1);
+        public String tirarCarta(int numJugador, String carta, String nuevoColor, Partida partida) {
+            if (numJugador == this.turnoActual) {
+                List<String> maJugador = this.mans.get(numJugador - 1);
 
-                if (numJugador == turnoActual) {
-                    if (ultimaCarta == null) {
-                        if (maJugador.contains(carta) && (carta.contains("CanviColor") || carta.contains("AgafaQuatre") || esMismaCartaInicial(carta))) {
+                if (this.ultimaCarta == null) {
+                    if (maJugador.contains(carta) && (carta.contains("CanviColor") || carta.contains("AgafaQuatre") || this.esMismaCartaInicial(carta))) {
+                        int cartaIndex = maJugador.indexOf(carta);
+                        maJugador.remove(cartaIndex);
+
+                        if (carta.contains("CanviColor")) {
+                            if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
+                                return "Error: Debes proporcionar un nuevo color válido para la carta CanviColor (Vermell, Verd, Blau o Groc).";
+                            }
+
+                            cartaInicial = nuevoColor + " CanviColor";
+                            ultimaCarta = nuevoColor + " CanviColor";
+                            turnoActual = turnoActual % 2 + 1;
+
+                            return "El jugador " + numJugador + " ha tirat " + ultimaCarta + " i ha triat el color " + nuevoColor + ".";
+                        } else if (carta.contains("AgafaQuatre")) {
+                            int jugadorOponente = partida.getTurnoActual() % 2 + 1;
+
+                            for (int i = 0; i < 4; i++) {
+                                // Agregar una nueva carta a la mano del oponente
+                                String nuevaCarta = partida.generarCartaRandom();
+                                partida.mans.get(jugadorOponente - 1).add(nuevaCarta);
+                            }
+
+                            // Quitar la carta usada para AgafaQuatre de la mano del jugador
                             maJugador.remove(carta);
 
-                            if (carta.contains("CanviColor")) {
-                                if (nuevoColor == null || !List.of("Vermell", "Verd", "Blau", "Groc").contains(nuevoColor)) {
-                                    return "Error: Debes proporcionar un nuevo color válido para la carta CanviColor (Vermell, Verd, Blau o Groc).";
-                                }
-
-                                cartaInicial = nuevoColor + " CanviColor";
-                                ultimaCarta = nuevoColor + " CanviColor";
-                                turnoActual = turnoActual % 2 + 1;
-
-                                return "El jugador " + numJugador + " ha tirat " + ultimaCarta + " i ha triat el color " + nuevoColor + ".";
-                            } else if (carta.contains("AgafaQuatre")) {
-                                int jugadorOponente = turnoActual % 2 + 1;
-
-                                for (int i = 0; i < 4; i++) {
-                                    mans.get(jugadorOponente - 1).add(generarCartaRandom());
-                                }
-
-                                ultimaCarta = nuevoColor + " AgafaQuatre";
-                                turnoActual = turnoActual % 2 + 1;
-
-                                return "El jugador " + numJugador + " ha tirat " + ultimaCarta + ". El jugador " + jugadorOponente + " ha robado 4 cartas.";
-                            }
-                            if (carta.contains("AgafaDos")) {
-                                int jugadorSiguiente = turnoActual % 2 + 1;
-
-                                for (int i = 0; i < 2; i++) {
-                                    mans.get(jugadorSiguiente - 1).add(generarCartaRandom());
-                                }
-
-                                jugadoresQueHanPasado = 2;
-                                turnoActual = numJugador;
-
-                                return "El jugador " + numJugador + " ha tirat " + carta + ". El jugador " + jugadorSiguiente + " ha robat 2 cartes. No pot tirar al següent torn.";
-                            } else if (carta.contains("Salta")) {
-                                turnoActual = numJugador;
-                                ultimaCarta = carta;
-                                return "El jugador " + numJugador + " ha tirat " + carta + ". Ha saltat el torn del jugador " + (numJugador % 2 + 1) + ".";
-                            } else if (carta.contains("Inverteix")) {
-                                turnoActual = numJugador;
-                                ultimaCarta = carta;
-                                return "El jugador " + numJugador + " ha tirat " + carta + ". S'ha invertit el torn. Ara li toca al jugador " + numJugador + ".";
-                            } else {
-                                turnoActual = turnoActual % 2 + 1;
-                            }
-
-                            ultimaCarta = carta;
-
-                            return "El jugador " + numJugador + " ha tirat una carta: " + carta;
-                        } else {
-                            return "La carta no està a la mà del jugador " + numJugador + " o no es pot tirar. Carta a la taula: " + cartaInicial + ".";
+                            partida.setUltimaCarta(nuevoColor + " AgafaQuatre");
+                            partida.cambiarTurno();
+                            return "El jugador " + numJugador + " ha tirado " + partida.getUltimaCarta() + ". El jugador " + jugadorOponente + " ha robado 4 cartas.";
                         }
+
+
+
+                        if (carta.contains("AgafaDos")) {
+                            int jugadorSiguiente = this.turnoActual % 2 + 1;
+
+                            for (int i = 0; i < 2; i++) {
+                                this.mans.get(jugadorSiguiente - 1).add(this.generarCartaRandom());
+                            }
+
+                            this.jugadoresQueHanPasado = 2;
+                            this.turnoActual = numJugador;
+
+                            return "El jugador " + numJugador + " ha tirado " + carta + ". El jugador " + jugadorSiguiente + " ha robado 2 cartas. No puede tirar en la siguiente ronda.";
+                        } else if (carta.contains("Salta")) {
+                            this.turnoActual = numJugador;
+                            this.ultimaCarta = carta;
+                            return "El jugador " + numJugador + " ha tirado " + carta + ". Ha saltado el turno del jugador " + (numJugador % 2 + 1) + ".";
+                        } else if (carta.contains("Inverteix")) {
+                            this.turnoActual = numJugador;
+                            this.ultimaCarta = carta;
+                            return "El jugador " + numJugador + " ha tirado " + carta + ". Se ha invertido el turno. Ahora le toca al jugador " + numJugador + ".";
+                        } else {
+                            this.turnoActual = this.turnoActual % 2 + 1;
+                        }
+
+                        this.ultimaCarta = carta;
+
+                        return "El jugador " + numJugador + " ha tirado una carta: " + carta;
                     } else {
-                        if (puedeTirarCarta(carta)) {
-                            int cartaIndex = maJugador.indexOf(carta);
-                            if (cartaIndex != -1) {
-                                maJugador.remove(cartaIndex);
-
-                                if (carta.contains("AgafaDos") || carta.contains("Salta") || carta.contains("Inverteix")) {
-                                } else {
-                                    ultimaCarta = carta;
-                                }
-
-                                if (carta.contains("AgafaDos")) {
-                                    int jugadorSiguiente = turnoActual % 2 + 1;
-
-                                    for (int i = 0; i < 2; i++) {
-                                        mans.get(jugadorSiguiente - 1).add(generarCartaRandom());
-                                    }
-
-                                    jugadoresQueHanPasado = 2;
-                                    turnoActual = numJugador;
-
-                                    return "El jugador " + numJugador + " ha tirat " + carta + ". El jugador " + jugadorSiguiente + " ha robat 2 cartes. No pot tirar al següent torn.";
-                                } else if (carta.contains("Salta")) {
-                                    turnoActual = numJugador;
-                                    ultimaCarta = carta;
-                                    return "El jugador " + numJugador + " ha tirat " + carta + ". Ha saltat/bloquejat el torn del jugador " + (numJugador % 2 + 1) + ".";
-                                } else if (carta.contains("Inverteix")) {
-                                    turnoActual = numJugador;
-                                    ultimaCarta = carta;
-                                    return "El jugador " + numJugador + " ha tirat " + carta + ". S'ha invertit el torn. Ara li toca al jugador " + numJugador + ".";
-                                } else {
-                                    turnoActual = turnoActual % 2 + 1;
-                                }
-
-                                ultimaCarta = carta;
-
-                                return "El jugador " + numJugador + " ha tirat una carta: " + carta;
-                            } else {
-                                return "La carta no està a la mà del jugador " + numJugador;
-                            }
-                        } else {
-                            return "Error: Has de tirar una carta que tingui el mateix color, el mateix número o una carta especial ('Salta', 'Inverteix', 'AgafaDos').";
-                        }
+                        return "La carta no está en la mano del jugador " + numJugador + " o no puede ser tirada. Carta en la mesa: " + this.cartaInicial + ".";
                     }
                 } else {
-                    return "No és el teu torn per tirar.";
+                    if (this.puedeTirarCarta(carta)) {
+                        int cartaIndex = maJugador.indexOf(carta);
+                        if (cartaIndex != -1) {
+                            maJugador.remove(cartaIndex);
+
+                            if (carta.contains("AgafaDos") || carta.contains("Salta") || carta.contains("Inverteix")) {
+                            } else {
+                                this.ultimaCarta = carta;
+                            }
+
+                            if (carta.contains("AgafaDos")) {
+                                int jugadorSiguiente = this.turnoActual % 2 + 1;
+
+                                for (int i = 0; i < 2; i++) {
+                                    this.mans.get(jugadorSiguiente - 1).add(this.generarCartaRandom());
+                                }
+
+                                this.jugadoresQueHanPasado = 2;
+                                this.turnoActual = numJugador;
+
+                                return "El jugador " + numJugador + " ha tirado " + carta + ". El jugador " + jugadorSiguiente + " ha robado 2 cartas. No puede tirar en la siguiente ronda.";
+                            } else if (carta.contains("Salta")) {
+                                this.turnoActual = numJugador;
+                                this.ultimaCarta = carta;
+                                return "El jugador " + numJugador + " ha tirado " + carta + ". Ha saltado/bloqueado el turno del jugador " + (numJugador % 2 + 1) + ".";
+                            } else if (carta.contains("Inverteix")) {
+                                this.turnoActual = numJugador;
+                                this.ultimaCarta = carta;
+                                return "El jugador " + numJugador + " ha tirado " + carta + ". Se ha invertido el turno. Ahora le toca al jugador " + numJugador + ".";
+                            } else {
+                                this.turnoActual = this.turnoActual % 2 + 1;
+                            }
+
+                            this.ultimaCarta = carta;
+
+                            return "El jugador " + numJugador + " ha tirado una carta: " + carta;
+                        } else {
+                            return "La carta no está en la mano del jugador " + numJugador;
+                        }
+                    } else {
+                        return "Error: Debes tirar una carta que tenga el mismo color, el mismo número o una carta especial ('Salta', 'Inverteix', 'AgafaDos').";
+                    }
                 }
             } else {
-                return "Número de jugador no válido.";
+                return "No es tu turno para tirar.";
             }
         }
 
+        private boolean puedeTirarCarta(String carta) {
+            if (this.ultimaCarta == null) {
+                return true;
+            }
+
+            String[] ultima = this.ultimaCarta.split(" ");
+            String[] actual = carta.split(" ");
+
+            if (ultima.length == 2 && actual.length == 2) {
+                if ("Salta".equals(actual[1]) || "Inverteix".equals(actual[1]) || "AgafaDos".equals(actual[1])) {
+                    return actual[0].equals(ultima[0]) || actual[1].equals(ultima[1]);
+                }
+
+                // Permitir tirar "AgafaQuatre" y "CanviColor" en cualquier momento
+                if ("AgafaQuatre".equals(actual[1]) || "CanviColor".equals(actual[1])) {
+                    return true;
+                }
+
+                return actual[0].equals(ultima[0]) || actual[1].equals(ultima[1]);
+            }
+
+            return false;
+        }
+
+
 
         private boolean esMismaCartaInicial(String carta) {
-            String[] inicial = cartaInicial.split(" ");
+            String[] inicial = this.cartaInicial.split(" ");
             String[] actual = carta.split(" ");
 
             return actual[0].equals(inicial[0]) || actual[1].equals(inicial[1]);
         }
 
-        private boolean puedeTirarCarta(String carta) {
-            if (ultimaCarta == null) {
-                return true;
-            }
-
-            String[] ultima = ultimaCarta.split(" ");
-            String[] actual = carta.split(" ");
-
-            if ("Salta".equals(actual[1]) || "Inverteix".equals(actual[1]) || "AgafaDos".equals(actual[1])) {
-                return actual[0].equals(ultima[0]) || actual[1].equals(ultima[1]);
-            }
-
-            return actual[0].equals(ultima[0]) || actual[1].equals(ultima[1]);
-        }
 
         private String generarCartaRandom() {
             List<String> baralla = crearBaralla();
@@ -354,7 +397,21 @@ public class JocWebService {
             return baralla;
         }
 
-        public void establecerCartaInicial(String s) {
+        public void establecerCartaInicial(String nuevaCarta) {
+            this.cartaInicial = nuevaCarta;
+        }
+
+        public int getTurnoActual() {
+            return turnoActual;
+        }
+        public void setUltimaCarta(String ultimaCarta) {
+            this.ultimaCarta = ultimaCarta;
+        }
+        public void cambiarTurno() {
+            this.turnoActual = this.turnoActual % 2 + 1;
+        }
+        public void setTurnoActual(int turnoActual) {
+            this.turnoActual = turnoActual;
         }
     }
 }
