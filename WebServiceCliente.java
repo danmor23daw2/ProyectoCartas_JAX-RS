@@ -1,21 +1,18 @@
 package proyecto.cartas.proyectocartas;
 
+import okhttp3.*;
+
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-
-
 
 public class WebServiceCliente {
 
     private static final String URL_BASE = "http://localhost:8080/ProyectoCartas_war_exploded/api/";
+    private static final BufferedReader lector = new BufferedReader(new InputStreamReader(System.in));
 
     public static void main(String[] args) {
         try {
-            BufferedReader lector = new BufferedReader(new InputStreamReader(System.in));
             boolean salir = false;
 
             do {
@@ -54,46 +51,51 @@ public class WebServiceCliente {
 
             } while (!salir);
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static void iniciarJoc() throws Exception {
+    private static void iniciarJoc() throws IOException {
         System.out.println("Introdueix el codi de la partida: ");
-        int codiPartida = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int codiPartida = Integer.parseInt(lector.readLine());
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(URL_BASE + "iniciarJoc/" + codiPartida))
-                .POST(HttpRequest.BodyPublishers.noBody())
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(URL_BASE + "iniciarJoc/" + codiPartida)
+                .post(RequestBody.create("", null))
                 .build();
 
-        enviarPeticio(request);
+        enviarPeticio(client, request);
     }
 
-    private static void mostrarCartes() throws Exception {
+    private static void mostrarCartes() throws IOException {
         System.out.println("Introdueix el codi de la partida: ");
-        int codiPartida = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int codiPartida = Integer.parseInt(lector.readLine());
         System.out.println("Introdueix el número de jugador: ");
-        int numJugador = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int numJugador = Integer.parseInt(lector.readLine());
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(URL_BASE + "mostrarCartes/" + codiPartida + "/" + numJugador))
-                .GET()
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(URL_BASE + "mostrarCartes/" + codiPartida + "/" + numJugador)
+                .get()
                 .build();
 
-        enviarPeticio(request);
+        enviarPeticio(client, request);
     }
 
-    private static void tirarCarta() throws Exception {
+
+    private static void tirarCarta() throws IOException {
         System.out.println("Introdueix el codi de la partida: ");
-        int codiPartida = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int codiPartida = Integer.parseInt(lector.readLine());
         System.out.println("Introdueix el número de jugador: ");
-        int numJugador = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int numJugador = Integer.parseInt(lector.readLine());
         System.out.println("Introdueix la carta a tirar: ");
-        String carta = new BufferedReader(new InputStreamReader(System.in)).readLine();
+        String carta = lector.readLine();
         System.out.println("Introdueix el nou color (si escau): ");
-        String nouColor = new BufferedReader(new InputStreamReader(System.in)).readLine();
+        String nouColor = lector.readLine();
 
         carta = carta.replace(" ", "%20");
 
@@ -104,46 +106,51 @@ public class WebServiceCliente {
             url += "?nuevoColor=" + nouColor;
         }
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .PUT(HttpRequest.BodyPublishers.noBody())
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .put(RequestBody.create("", null))
                 .build();
 
-        enviarPeticio(request);
+        enviarPeticio(client, request);
     }
 
-    private static void passarTorn() throws Exception {
+    private static void passarTorn() throws IOException {
         System.out.println("Introdueix el codi de la partida: ");
-        int codiPartida = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int codiPartida = Integer.parseInt(lector.readLine());
         System.out.println("Introdueix el número de jugador: ");
-        int numJugador = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int numJugador = Integer.parseInt(lector.readLine());
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(URL_BASE + "moureJugador/" + codiPartida + "/passa/" + numJugador))
-                .PUT(HttpRequest.BodyPublishers.noBody())
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(URL_BASE + "moureJugador/" + codiPartida + "/passa/" + numJugador)
+                .put(RequestBody.create("", null))
                 .build();
 
-        enviarPeticio(request);
+        enviarPeticio(client, request);
     }
 
-    private static void finalitzarJoc() throws Exception {
+    private static void finalitzarJoc() throws IOException {
         System.out.println("Introdueix el codi de la partida: ");
-        int codiPartida = Integer.parseInt(new BufferedReader(new InputStreamReader(System.in)).readLine());
+        int codiPartida = Integer.parseInt(lector.readLine());
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(URL_BASE + "acabarJoc/" + codiPartida))
-                .DELETE()
+        OkHttpClient client = new OkHttpClient();
+
+        Request request = new Request.Builder()
+                .url(URL_BASE + "acabarJoc/" + codiPartida)
+                .delete()
                 .build();
 
-        enviarPeticio(request);
+        enviarPeticio(client, request);
     }
 
-    private static void enviarPeticio(HttpRequest request) throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        System.out.println("Codi de resposta: " + response.statusCode());
-        System.out.println("Resposta: " + response.body());
+    private static String enviarPeticio(OkHttpClient client, Request request) throws IOException {
+        try (Response response = client.newCall(request).execute()) {
+            System.out.println("Codi de resposta: " + response.code());
+            System.out.println("Resposta: " + response.body().string());
+        }
+        return null;
     }
-
 }
